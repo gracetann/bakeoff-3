@@ -35,11 +35,12 @@
       padding: 1em;
       border-radius: 1em;
       box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.2);
-      height: 260px;
-      width: 300px;
       display: flex;
       flex-direction: column;
-      overflow: hidden;
+      gap: 0.7em;
+      width: 250px;
+      height: 250px;
+      overflow: auto;
     }
 
     .box_movies {
@@ -47,8 +48,8 @@
       padding: 1em;
       border-radius: 1em;
       box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.2);
-      height: 525px;
       width: 500px;
+      height: 600px;
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -56,7 +57,7 @@
 
     #movies {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(3, 3fr);
       grid-gap: 0.5em;
       overflow-y: auto;
       flex: 1;
@@ -88,8 +89,12 @@
       margin: 0.5em 0 0.2em;
     }
 
-    #clearSelection, #clearInputsBtn, #toggleGenresBtn {
+    #clearInputsBtn, #toggleGenresBtn {
       margin-top: 0.5em;
+    }
+    
+    #clearSelection {
+      display: none;
     }
 
     #searchInput {
@@ -98,191 +103,272 @@
       border-radius: 0.4em;
       border: 1px solid #aaa;
     }
+
+    .filter-badge {
+      margin-left: 0.5em;
+      font-size: 0.9em;
+      font-weight: bold;
+      color: darkred;
+    }
+
+    .time-slider label {
+      font-size: 0.85em;
+      display: block;
+      margin-top: 0.5em;
+    }
+
+    .time-slider input[type="range"] {
+      width: 100%;
+    }
+
+    button {
+      margin-top: 10px;
+    }
+
   </style>
   <script src="https://dhcs-s25-bakeoff3.glitch.me/framework.js"></script>
 </head>
 <body>
-  <div id="main">
-    <div class="filters">
-      <div class="box">
-        <div><strong>Genres:</strong></div>
-        <button id="toggleGenresBtn">Select All</button>
-        <div id="genreFilters"></div>
-      </div>
-      <div class="box">
-        <div><strong>Showtimes:</strong></div>
-        <label>From: <input type="time" id="startTime"></label>
-        <label>To: <input type="time" id="endTime"></label>
-        <button id="clearInputsBtn">Clear Time Filters</button>
-      </div>
+<div id="main">
+  <div class="filters">
+    <div class="box">
+      <div><strong>Genres:</strong> <span id="genreBadge" class="filter-badge"></span></div>
+      <button id="toggleGenresBtn">Select All</button>
+      <div id="genreFilters"></div>
     </div>
-    <div class="box_movies" style="flex-grow:1;">
-      <input type="text" id="searchInput" placeholder="Search by movie title...">
-      <div><strong>Movies:</strong></div>
-      <div id="movies"></div>
-      <button id="clearSelection">clear</button>
-      <div id="details"></div>
+    <div class="box">
+      <div><strong>Showtimes:</strong> <span id="timeBadge" class="filter-badge"></span></div>
+      <div class="time-slider">
+        <label>From: <span id="timeStartLabel">12:00 AM</span></label>
+        <input type="range" id="timeStartRange" min="0" max="1439" value="0" step="15">
+
+        <label>To: <span id="timeEndLabel">11:45 PM</span></label>
+        <input type="range" id="timeEndRange" min="0" max="1439" value="1439" step="15">
+      </div>
+      <button id="clearInputsBtn">Clear Time Filters</button>
     </div>
   </div>
+  <div class="box_movies" style="flex-grow:1;">
+    <input type="text" id="searchInput" placeholder="Search by movie title...">
+    <div><strong>Movies:</strong></div>
+    <div id="movies"></div>
+    <button id="clearSelection">clear selection</button>
+    <div id="details"></div>
+  </div>
+</div>
 
-  <script>
-    const judge = new Judge("teamName");
-    const allMovies = judge.getMovies();
+<script>
+  const judge = new Judge("teamName");
+  const allMovies = judge.getMovies();
 
-    const genreFiltersDiv = document.getElementById("genreFilters");
-    const moviesDiv = document.getElementById("movies");
-    const startTimeInput = document.getElementById("startTime");
-    const endTimeInput = document.getElementById("endTime");
-    const detailsDiv = document.getElementById("details");
-    const toggleGenresBtn = document.getElementById("toggleGenresBtn");
-    const clearInputsBtn = document.getElementById("clearInputsBtn");
-    const searchInput = document.getElementById("searchInput");
+  const genreFiltersDiv = document.getElementById("genreFilters");
+  const moviesDiv = document.getElementById("movies");
+  const detailsDiv = document.getElementById("details");
+  const toggleGenresBtn = document.getElementById("toggleGenresBtn");
+  const clearInputsBtn = document.getElementById("clearInputsBtn");
+  const searchInput = document.getElementById("searchInput");
+  const genreBadge = document.getElementById("genreBadge");
+  const timeBadge = document.getElementById("timeBadge");
 
-    let allGenres = [...new Set(allMovies.flatMap(movie => movie.genres))];
-    let genreCheckboxes = [];
+  const timeStartRange = document.getElementById("timeStartRange");
+  const timeEndRange = document.getElementById("timeEndRange");
+  const timeStartLabel = document.getElementById("timeStartLabel");
+  const timeEndLabel = document.getElementById("timeEndLabel");
 
-    allGenres.forEach(genre => {
-      const label = document.createElement("label");
-      const checkbox = document.createElement("input");
-      checkbox.type = "checkbox";
-      checkbox.value = genre;
-      genreCheckboxes.push(checkbox);
-      label.appendChild(checkbox);
-      label.appendChild(document.createTextNode(genre));
-      genreFiltersDiv.appendChild(label);
-    });
+  let allGenres = [...new Set(allMovies.flatMap(movie => movie.genres))];
+  let genreCheckboxes = [];
 
-    toggleGenresBtn.addEventListener("click", () => {
-      const allChecked = genreCheckboxes.every(cb => cb.checked);
-      genreCheckboxes.forEach(cb => cb.checked = !allChecked);
-      toggleGenresBtn.innerText = allChecked ? "Select All" : "Deselect All";
+  allGenres.forEach(genre => {
+    const label = document.createElement("label");
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.value = genre;
+
+    // Attach change listener to update button text
+    checkbox.addEventListener("change", () => {
+      updateToggleButtonText();
       filterMovies();
+      document.getElementById("clearSelection").style.display = "none";
     });
 
-    clearInputsBtn.addEventListener("click", () => {
-      startTimeInput.value = "";
-      endTimeInput.value = "";
-      filterMovies();
+    genreCheckboxes.push(checkbox);
+    label.appendChild(checkbox);
+    label.appendChild(document.createTextNode(genre));
+    genreFiltersDiv.appendChild(label);
+  });
+
+  function updateToggleButtonText() {
+    const allChecked = genreCheckboxes.every(cb => cb.checked);
+    toggleGenresBtn.innerText = allChecked ? "Deselect All" : "Select All";
+  }
+
+  // Existing toggle button click handler stays the same
+  toggleGenresBtn.addEventListener("click", () => {
+    const allChecked = genreCheckboxes.every(cb => cb.checked);
+    genreCheckboxes.forEach(cb => cb.checked = !allChecked);
+    toggleGenresBtn.innerText = allChecked ? "Select All" : "Deselect All";
+    filterMovies();
+    document.getElementById("clearSelection").style.display = "none";
+  });
+
+
+  clearInputsBtn.addEventListener("click", () => {
+    timeStartRange.value = "0";
+    timeEndRange.value = "1439";
+    timeStartLabel.textContent = "12:00 AM";
+    timeEndLabel.textContent = "11:45 PM";
+    filterMovies();
+    document.getElementById("clearSelection").style.display = "none";
+  });
+
+  function minutesToTime(mins) {
+    const hours24 = Math.floor(mins / 60);
+    const minutes = mins % 60;
+    const hours12 = (hours24 % 12) || 12;
+    const ampm = hours24 < 12 ? "AM" : "PM";
+    return `${hours12}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+  }
+
+  timeStartRange.addEventListener("input", () => {
+    if (parseInt(timeStartRange.value) > parseInt(timeEndRange.value)) {
+      timeEndRange.value = timeStartRange.value;
+    }
+    timeStartLabel.textContent = minutesToTime(parseInt(timeStartRange.value));
+    timeEndLabel.textContent = minutesToTime(parseInt(timeEndRange.value));
+    filterMovies();
+    document.getElementById("clearSelection").style.display = "none";
+  });
+
+  timeEndRange.addEventListener("input", () => {
+    if (parseInt(timeEndRange.value) < parseInt(timeStartRange.value)) {
+      timeStartRange.value = timeEndRange.value;
+    }
+    timeStartLabel.textContent = minutesToTime(parseInt(timeStartRange.value));
+    timeEndLabel.textContent = minutesToTime(parseInt(timeEndRange.value));
+    filterMovies();
+    document.getElementById("clearSelection").style.display = "none";
+  });
+
+  function updateBadges(selectedGenres, startTime, endTime) {
+    genreBadge.textContent = selectedGenres.length ? selectedGenres.join(", ") : "";
+    timeBadge.textContent = (startTime !== "12:00 AM" || endTime !== "11:45 PM") ? `${startTime} - ${endTime}` : "";
+  }
+
+  function filterMovies() {
+    const selectedGenres = genreCheckboxes.filter(cb => cb.checked).map(cb => cb.value);
+    const startMinutes = parseInt(timeStartRange.value);
+    const endMinutes = parseInt(timeEndRange.value);
+    const searchTerm = searchInput.value.toLowerCase();
+
+    updateBadges(selectedGenres, minutesToTime(startMinutes), minutesToTime(endMinutes));
+
+    const filtered = allMovies.filter(movie => {
+      const genreMatch = selectedGenres.length === 0 || movie.genres.some(g => selectedGenres.includes(g));
+      const timeMatch = movie.movieTimes.some(t => {
+        const [h, m] = t.split(":").map(Number);
+        const totalMins = h * 60 + m;
+        return totalMins >= startMinutes && totalMins <= endMinutes;
+      });
+      const titleMatch = movie.title.toLowerCase().includes(searchTerm);
+      return genreMatch && timeMatch && titleMatch;
     });
 
-    function filterMovies() {
-      const selectedGenres = genreCheckboxes.filter(cb => cb.checked).map(cb => cb.value);
-      const startTime = startTimeInput.value;
-      const endTime = endTimeInput.value;
-      const searchTerm = searchInput.value.toLowerCase();
+    renderMovies(filtered);
+  }
 
-      const filtered = allMovies.filter(movie => {
-        const genreMatch = selectedGenres.length === 0 || movie.genres.some(g => selectedGenres.includes(g));
-        const timeMatch = movie.movieTimes.some(t => {
-          if (!startTime || !endTime) return true;
-          return t >= startTime && t <= endTime;
-        });
-        const titleMatch = movie.title.toLowerCase().includes(searchTerm);
-        return genreMatch && timeMatch && titleMatch;
-      });
+  function renderMovies(movies) {
+    moviesDiv.innerHTML = '';
+    detailsDiv.innerHTML = '';
+    movies.forEach(movie => {
+      const div = document.createElement("div");
+      div.className = "movie-tile";
+      div.textContent = movie.title;
+      div.addEventListener("click", () => showMovieDetails(movie));
+      moviesDiv.appendChild(div);
+    });
+  }
 
-      renderMovies(filtered);
+  function showMovieDetails(movie) {
+    detailsDiv.innerHTML = '';
+    document.getElementById("clearSelection").style.display = "inline-block";
+
+    const title = document.createElement("h3");
+    title.innerText = movie.title;
+
+    const desc = document.createElement("p");
+    desc.innerText = movie.description;
+
+    const actors = document.createElement("p");
+    actors.innerHTML = `<strong>Actors:</strong> ${movie.actors.join(", ")}`;
+
+    const tags = document.createElement("p");
+    tags.innerHTML = `<strong>Tags:</strong> ${movie.genres.join(", ")}`;
+
+    const timeLabel = document.createElement("label");
+    timeLabel.innerText = "Select Showtime:";
+
+    function formatTime12Hour(timeStr) {
+      const [hour, minute] = timeStr.split(":").map(Number);
+      const period = hour >= 12 ? "PM" : "AM";
+      const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+      return `${hour12}:${minute.toString().padStart(2, "0")} ${period}`;
     }
 
-    function renderMovies(movies) {
-      moviesDiv.innerHTML = '';
-      detailsDiv.innerHTML = '';
-      movies.forEach(movie => {
-        const div = document.createElement("div");
-        div.className = "movie-tile";
-        div.textContent = movie.title;
-        div.addEventListener("click", () => showMovieDetails(movie));
-        moviesDiv.appendChild(div);
-      });
-    }
+    const timeSelect = document.createElement("select");
+    movie.movieTimes.forEach(t => {
+      const opt = document.createElement("option");
+      opt.value = t;
+      opt.innerText = formatTime12Hour(t);
+      timeSelect.appendChild(opt);
+    });
 
-    function showMovieDetails(movie) {
-      detailsDiv.innerHTML = '';
-      document.getElementById("clearSelection").style.display = "inline-block";
+    const nameLabel = document.createElement("label");
+    nameLabel.innerText = "Your Name:";
+    const nameInput = document.createElement("input");
+    nameInput.type = "text";
 
-      const title = document.createElement("h3");
-      title.innerText = movie.title;
+    const ticketLabel = document.createElement("label");
+    ticketLabel.innerText = "Number of Tickets:";
+    const ticketRange = document.createElement("input");
+    ticketRange.type = "text";
+    ticketRange.value = "1";
 
-      const desc = document.createElement("p");
-      desc.innerText = movie.description;
+    const submitButton = document.createElement("button");
+    submitButton.innerText = "Submit";
+    submitButton.addEventListener("click", () => {
+      const userData = {
+        movie: movie,
+        movieTime: timeSelect.value,
+        numberOfTickets: ticketRange.value,
+        userName: nameInput.value
+      };
+      judge.submitMovieChoice(userData);
+      alert("Submitted!");
+    });
 
-      const actors = document.createElement("p");
-      actors.innerHTML = `<strong>Actors:</strong> ${movie.actors.join(", ")}`;
+    document.getElementById("clearSelection").addEventListener("click", () => {
+      document.getElementById("details").innerHTML = "";
+      document.getElementById("clearSelection").style.display = "none";
+    });
 
-      const timeLabel = document.createElement("label");
-      timeLabel.innerText = "Select Showtime:";
+    detailsDiv.appendChild(title);
+    detailsDiv.appendChild(desc);
+    detailsDiv.appendChild(actors);
+    detailsDiv.appendChild(tags);
+    detailsDiv.appendChild(timeLabel);
+    detailsDiv.appendChild(timeSelect);
+    detailsDiv.appendChild(nameLabel);
+    detailsDiv.appendChild(nameInput);
+    detailsDiv.appendChild(ticketLabel);
+    detailsDiv.appendChild(ticketRange);
+    detailsDiv.appendChild(document.createElement("br"));
+    detailsDiv.appendChild(submitButton);
+  }
 
-      function formatTime12Hour(timeStr) {
-        const [hour, minute] = timeStr.split(":".map(Number));
-        const period = hour >= 12 ? "PM" : "AM";
-        const hour12 = hour % 12 === 0 ? 12 : hour % 12;
-        return `${hour12}:${minute.toString().padStart(2, "0")} ${period}`;
-      }
+  genreFiltersDiv.addEventListener("change", filterMovies);
+  searchInput.addEventListener("input", filterMovies);
 
-      const timeSelect = document.createElement("select");
-      movie.movieTimes.forEach(t => {
-        const opt = document.createElement("option");
-        opt.value = t;
-        opt.innerText = t;
-        timeSelect.appendChild(opt);
-      });
-
-      const nameLabel = document.createElement("label");
-      nameLabel.innerText = "Your Name:";
-      const nameInput = document.createElement("input");
-      nameInput.type = "text";
-
-      const ticketLabel = document.createElement("label");
-      ticketLabel.innerText = "Number of Tickets:";
-      const ticketRange = document.createElement("input");
-      ticketRange.type = "range";
-      ticketRange.min = "1";
-      ticketRange.max = "20";
-      ticketRange.value = "1";
-      ticketRange.step = "1";
-
-      const ticketOutput = document.createElement("span");
-      ticketOutput.innerText = "1";
-      ticketRange.oninput = () => ticketOutput.innerText = ticketRange.value;
-
-      const submitButton = document.createElement("button");
-      submitButton.innerText = "Submit";
-      submitButton.addEventListener("click", () => {
-        const userData = {
-          movie: movie,
-          movieTime: timeSelect.value,
-          numberOfTickets: ticketRange.value,
-          userName: nameInput.value
-        };
-        judge.submitMovieChoice(userData);
-        alert("Submitted!");
-      });
-
-      document.getElementById("clearSelection").addEventListener("click", () => {
-        document.getElementById("details").innerHTML = "";
-        document.getElementById("clearSelection").style.display = "none";
-      });
-
-      detailsDiv.appendChild(title);
-      detailsDiv.appendChild(desc);
-      detailsDiv.appendChild(actors);
-      detailsDiv.appendChild(timeLabel);
-      detailsDiv.appendChild(timeSelect);
-      detailsDiv.appendChild(nameLabel);
-      detailsDiv.appendChild(nameInput);
-      detailsDiv.appendChild(ticketLabel);
-      detailsDiv.appendChild(ticketRange);
-      detailsDiv.appendChild(ticketOutput);
-      detailsDiv.appendChild(document.createElement("br"));
-      detailsDiv.appendChild(submitButton);
-    }
-
-    genreFiltersDiv.addEventListener("change", filterMovies);
-    startTimeInput.addEventListener("input", filterMovies);
-    endTimeInput.addEventListener("input", filterMovies);
-    searchInput.addEventListener("input", filterMovies);
-
-    renderMovies(allMovies);
-  </script>
+  renderMovies(allMovies);
+</script>
 </body>
 </html>
