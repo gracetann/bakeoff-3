@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Movie Filter</title>
+  <style>
+    body {
+      height: 100vh;
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: start;
+      background: #000;
+      font-family: sans-serif;
+      color: black;
+    }
+
+    #main {
+      display: flex;
+      background: #eee;
+      margin: 2em;
+      padding: 2em;
+      border-radius: 1em;
+      gap: 2em;
+    }
+
+    .filters {
+      display: flex;
+      flex-direction: column;
+      gap: 1em;
+    }
+
+    .box {
+      background: white;
+      padding: 1em;
+      border-radius: 1em;
+      box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.2);
+      height: 260px;
+      width: 300px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .box_movies {
+      background: white;
+      padding: 1em;
+      border-radius: 1em;
+      box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.2);
+      height: 525px;
+      width: 500px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    #movies {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-gap: 0.5em;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    #details {
+      border-top: 1px solid #ccc;
+      padding-top: 0.5em;
+      overflow-y: auto;
+      max-height: 350px;
+      font-size: 0.9em;
+    }
+
+    .movie-tile {
+      width: 100px;
+      height: 100px;
+      background-color: lavender;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8em;
+      text-align: center;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    label {
+      display: block;
+      margin: 0.5em 0 0.2em;
+    }
+
+    #clearSelection, #clearInputsBtn, #toggleGenresBtn {
+      margin-top: 0.5em;
+    }
+
+    #searchInput {
+      margin-bottom: 0.5em;
+      padding: 0.4em;
+      border-radius: 0.4em;
+      border: 1px solid #aaa;
+    }
+  </style>
+  <script src="https://dhcs-s25-bakeoff3.glitch.me/framework.js"></script>
+</head>
+<body>
+  <div id="main">
+    <div class="filters">
+      <div class="box">
+        <div><strong>Genres:</strong></div>
+        <button id="toggleGenresBtn">Select All</button>
+        <div id="genreFilters"></div>
+      </div>
+      <div class="box">
+        <div><strong>Showtimes:</strong></div>
+        <label>From: <input type="time" id="startTime"></label>
+        <label>To: <input type="time" id="endTime"></label>
+        <button id="clearInputsBtn">Clear Time Filters</button>
+      </div>
+    </div>
+    <div class="box_movies" style="flex-grow:1;">
+      <input type="text" id="searchInput" placeholder="Search by movie title...">
+      <div><strong>Movies:</strong></div>
+      <div id="movies"></div>
+      <button id="clearSelection">clear</button>
+      <div id="details"></div>
+    </div>
+  </div>
+
+  <script>
+    const judge = new Judge("teamName");
+    const allMovies = judge.getMovies();
+
+    const genreFiltersDiv = document.getElementById("genreFilters");
+    const moviesDiv = document.getElementById("movies");
+    const startTimeInput = document.getElementById("startTime");
+    const endTimeInput = document.getElementById("endTime");
+    const detailsDiv = document.getElementById("details");
+    const toggleGenresBtn = document.getElementById("toggleGenresBtn");
+    const clearInputsBtn = document.getElementById("clearInputsBtn");
+    const searchInput = document.getElementById("searchInput");
+
+    let allGenres = [...new Set(allMovies.flatMap(movie => movie.genres))];
+    let genreCheckboxes = [];
+
+    allGenres.forEach(genre => {
+      const label = document.createElement("label");
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.value = genre;
+      genreCheckboxes.push(checkbox);
+      label.appendChild(checkbox);
+      label.appendChild(document.createTextNode(genre));
+      genreFiltersDiv.appendChild(label);
+    });
+
+    toggleGenresBtn.addEventListener("click", () => {
+      const allChecked = genreCheckboxes.every(cb => cb.checked);
+      genreCheckboxes.forEach(cb => cb.checked = !allChecked);
+      toggleGenresBtn.innerText = allChecked ? "Select All" : "Deselect All";
+      filterMovies();
+    });
+
+    clearInputsBtn.addEventListener("click", () => {
+      startTimeInput.value = "";
+      endTimeInput.value = "";
+      filterMovies();
+    });
+
+    function filterMovies() {
+      const selectedGenres = genreCheckboxes.filter(cb => cb.checked).map(cb => cb.value);
+      const startTime = startTimeInput.value;
+      const endTime = endTimeInput.value;
+      const searchTerm = searchInput.value.toLowerCase();
+
+      const filtered = allMovies.filter(movie => {
+        const genreMatch = selectedGenres.length === 0 || movie.genres.some(g => selectedGenres.includes(g));
+        const timeMatch = movie.movieTimes.some(t => {
+          if (!startTime || !endTime) return true;
+          return t >= startTime && t <= endTime;
+        });
+        const titleMatch = movie.title.toLowerCase().includes(searchTerm);
+        return genreMatch && timeMatch && titleMatch;
+      });
+
+      renderMovies(filtered);
+    }
+
+    function renderMovies(movies) {
+      moviesDiv.innerHTML = '';
+      detailsDiv.innerHTML = '';
+      movies.forEach(movie => {
+        const div = document.createElement("div");
+        div.className = "movie-tile";
+        div.textContent = movie.title;
+        div.addEventListener("click", () => showMovieDetails(movie));
+        moviesDiv.appendChild(div);
+      });
+    }
+
+    function showMovieDetails(movie) {
+      detailsDiv.innerHTML = '';
+      document.getElementById("clearSelection").style.display = "inline-block";
+
+      const title = document.createElement("h3");
+      title.innerText = movie.title;
+
+      const desc = document.createElement("p");
+      desc.innerText = movie.description;
+
+      const actors = document.createElement("p");
+      actors.innerHTML = `<strong>Actors:</strong> ${movie.actors.join(", ")}`;
+
+      const timeLabel = document.createElement("label");
+      timeLabel.innerText = "Select Showtime:";
+
+      function formatTime12Hour(timeStr) {
+        const [hour, minute] = timeStr.split(":".map(Number));
+        const period = hour >= 12 ? "PM" : "AM";
+        const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+        return `${hour12}:${minute.toString().padStart(2, "0")} ${period}`;
+      }
+
+      const timeSelect = document.createElement("select");
+      movie.movieTimes.forEach(t => {
+        const opt = document.createElement("option");
+        opt.value = t;
+        opt.innerText = t;
+        timeSelect.appendChild(opt);
+      });
+
+      const nameLabel = document.createElement("label");
+      nameLabel.innerText = "Your Name:";
+      const nameInput = document.createElement("input");
+      nameInput.type = "text";
+
+      const ticketLabel = document.createElement("label");
+      ticketLabel.innerText = "Number of Tickets:";
+      const ticketRange = document.createElement("input");
+      ticketRange.type = "range";
+      ticketRange.min = "1";
+      ticketRange.max = "20";
+      ticketRange.value = "1";
+      ticketRange.step = "1";
+
+      const ticketOutput = document.createElement("span");
+      ticketOutput.innerText = "1";
+      ticketRange.oninput = () => ticketOutput.innerText = ticketRange.value;
+
+      const submitButton = document.createElement("button");
+      submitButton.innerText = "Submit";
+      submitButton.addEventListener("click", () => {
+        const userData = {
+          movie: movie,
+          movieTime: timeSelect.value,
+          numberOfTickets: ticketRange.value,
+          userName: nameInput.value
+        };
+        judge.submitMovieChoice(userData);
+        alert("Submitted!");
+      });
+
+      document.getElementById("clearSelection").addEventListener("click", () => {
+        document.getElementById("details").innerHTML = "";
+        document.getElementById("clearSelection").style.display = "none";
+      });
+
+      detailsDiv.appendChild(title);
+      detailsDiv.appendChild(desc);
+      detailsDiv.appendChild(actors);
+      detailsDiv.appendChild(timeLabel);
+      detailsDiv.appendChild(timeSelect);
+      detailsDiv.appendChild(nameLabel);
+      detailsDiv.appendChild(nameInput);
+      detailsDiv.appendChild(ticketLabel);
+      detailsDiv.appendChild(ticketRange);
+      detailsDiv.appendChild(ticketOutput);
+      detailsDiv.appendChild(document.createElement("br"));
+      detailsDiv.appendChild(submitButton);
+    }
+
+    genreFiltersDiv.addEventListener("change", filterMovies);
+    startTimeInput.addEventListener("input", filterMovies);
+    endTimeInput.addEventListener("input", filterMovies);
+    searchInput.addEventListener("input", filterMovies);
+
+    renderMovies(allMovies);
+  </script>
+</body>
+</html>
