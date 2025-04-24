@@ -158,6 +158,7 @@
 </div>
 
 <script>
+  // Initialize Judge framework
   const judge = new Judge("teamName");
   const allMovies = judge.getMovies();
 
@@ -175,15 +176,18 @@
   const timeStartLabel = document.getElementById("timeStartLabel");
   const timeEndLabel = document.getElementById("timeEndLabel");
 
+  // Get all unique genres from the movie list
   let allGenres = [...new Set(allMovies.flatMap(movie => movie.genres))];
   let genreCheckboxes = [];
 
+  // Create a checkbox for each genre 
   allGenres.forEach(genre => {
     const label = document.createElement("label");
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
     checkbox.value = genre;
 
+    // Filter movies when a genre is selected/deselected
     // Attach change listener to update button text
     checkbox.addEventListener("change", () => {
       updateToggleButtonText();
@@ -197,11 +201,13 @@
     genreFiltersDiv.appendChild(label);
   });
 
+  // Update button text depending on whether all genres are selected or not
   function updateToggleButtonText() {
     const allChecked = genreCheckboxes.every(cb => cb.checked);
     toggleGenresBtn.innerText = allChecked ? "Deselect All" : "Select All";
   }
 
+  // Toggle all genre checkboxes on button click
   // Existing toggle button click handler stays the same
   toggleGenresBtn.addEventListener("click", () => {
     const allChecked = genreCheckboxes.every(cb => cb.checked);
@@ -211,7 +217,7 @@
     document.getElementById("clearSelection").style.display = "none";
   });
 
-
+  // Clear time filters and reset slider values
   clearInputsBtn.addEventListener("click", () => {
     timeStartRange.value = "0";
     timeEndRange.value = "1439";
@@ -221,6 +227,7 @@
     document.getElementById("clearSelection").style.display = "none";
   });
 
+  // Convert minutes to 12-hour time format
   function minutesToTime(mins) {
     const hours24 = Math.floor(mins / 60);
     const minutes = mins % 60;
@@ -229,6 +236,7 @@
     return `${hours12}:${minutes.toString().padStart(2, '0')} ${ampm}`;
   }
 
+  // Update labels and call filter function when time range changes
   timeStartRange.addEventListener("input", () => {
     if (parseInt(timeStartRange.value) > parseInt(timeEndRange.value)) {
       timeEndRange.value = timeStartRange.value;
@@ -249,6 +257,7 @@
     document.getElementById("clearSelection").style.display = "none";
   });
 
+  // Update the badges (genre & time) above the filters
   function updateBadges(selectedGenres, startTime, endTime) {
     genreBadge.textContent = selectedGenres.length ? selectedGenres.join(", ") : "";
     timeBadge.textContent = (startTime !== "12:00 AM" || endTime !== "11:45 PM") ? `${startTime} - ${endTime}` : "";
@@ -276,6 +285,8 @@
     renderMovies(filtered);
   }
 
+
+  // Render the movie grid with clickable tiles
   function renderMovies(movies) {
     moviesDiv.innerHTML = '';
     detailsDiv.innerHTML = '';
@@ -288,6 +299,7 @@
     });
   }
 
+  // Show detailed info for selected movie and allow ticket reservation
   function showMovieDetails(movie) {
     detailsDiv.innerHTML = '';
     document.getElementById("clearSelection").style.display = "inline-block";
@@ -336,6 +348,7 @@
     const submitButton = document.createElement("button");
     submitButton.innerText = "Submit";
 
+    // Listen for submission and send data to Judge framework
     judge.on("submission", data => {
       console.log("Time elapsed: " + data.elapsedTime);
     })
@@ -351,11 +364,13 @@
       alert("Submitted!");
     });
 
+    // Clear details view
     document.getElementById("clearSelection").addEventListener("click", () => {
       document.getElementById("details").innerHTML = "";
       document.getElementById("clearSelection").style.display = "none";
     });
 
+    // Append all UI elements to the details panel
     detailsDiv.appendChild(title);
     detailsDiv.appendChild(desc);
     detailsDiv.appendChild(actors);
@@ -370,9 +385,11 @@
     detailsDiv.appendChild(submitButton);
   }
 
+  // React to changes in genre or search input
   genreFiltersDiv.addEventListener("change", filterMovies);
   searchInput.addEventListener("input", filterMovies);
 
+  // Initial rendering of all movies
   renderMovies(allMovies);
 </script>
 </body>
